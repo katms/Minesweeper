@@ -1,12 +1,15 @@
 import tkinter
 import tkinter.messagebox
 import random
+import timer
 
 
 class Minesweeper(tkinter.Frame):
     COLUMNS = range(8, 41)
     ROWS = range(8, 21)
     MIN_MINES = 10
+
+    TIMER_WIDTH = 2
 
     @staticmethod
     def max_mines(columns, rows):
@@ -31,13 +34,14 @@ class Minesweeper(tkinter.Frame):
         self.__rows = 0
         self.__mines = 0
 
+        # count unflagged mines
         self.mines_left = tkinter.IntVar()
         self.count = tkinter.Label(self)
-
         self.mines_left.trace("w",
                               lambda *args: self.count.config(text="Mines left: {}".format(self.mines_left.get())))
-
         self.mines_left.set(self.__mines)
+
+        self.timer = timer.Timer(self, "Time: ")
 
         self.set_dimensions(columns, rows, mines)
 
@@ -75,16 +79,21 @@ class Minesweeper(tkinter.Frame):
         self.safe_tiles_left = 0
         self.__game_over = False
         self.mines_left.set(self.mines)
+        self.timer.stop()
+        self.timer.reset()
 
     def set_dimensions(self, columns, rows, mines):
         if columns in Minesweeper.COLUMNS:
             self.__columns = columns
+            # keep timer on the right
+            self.timer.grid(column=columns-Minesweeper.TIMER_WIDTH, columnspan=Minesweeper.TIMER_WIDTH)
         else:
             raise ValueError("Cannot set columns as "+str(columns))
 
         if rows in Minesweeper.ROWS:
             self.__rows = rows
             self.count.grid(row=rows, columnspan=4)
+            self.timer.grid(row=rows, columnspan=4)
         else:
             raise ValueError("Cannot set rows as "+str(rows))
 
@@ -111,6 +120,7 @@ class Minesweeper(tkinter.Frame):
         return self.__mines
 
     def set_game_over(self):
+        self.timer.stop()
         self.__game_over = True
 
     @property
@@ -140,9 +150,6 @@ class Minesweeper(tkinter.Frame):
 
     def queue_neighbors(self, column, row):
         """Clear every tile surrounding a Safe with a count of 0 one at a time"""
-
-        # I fudged the dimension requirements and I think I can safely assume
-        # that any number of tiles can be uncovered at once without crashing
 
         # if queue is not empty then it's already in the process of being cleared
         being_cleared = bool(self.__queue)
@@ -194,7 +201,6 @@ class Minesweeper(tkinter.Frame):
             return
 
         self.set_game_over()
-
         for tile in self.tiles.values():
             if type(tile) == Mine:
                 tile.invoke()
@@ -203,13 +209,13 @@ class Minesweeper(tkinter.Frame):
                     tile.flag()
                     tile.config(text="?", disabledforeground="gray")  # also a placeholder
                 tile["state"] = tkinter.DISABLED
-
         self.play_again_or_quit("Game over", "You lose! ")
 
     def endgame(self):
         if self.__game_over or self.safe_tiles_left > 0:
             return
 
+        self.set_game_over()
         # disable unflagged mines:
         # all Safe tiles are revealed and therefore can't be flagged
         for m in filter((lambda t: type(t) == Mine and not t.flagged), self.tiles.values()):
@@ -244,6 +250,8 @@ class Flaggable(tkinter.Button):
         return self.__flagged
 
     def flag(self):
+        self.master.timer.start()
+
         # ignore if the tile was revealed or the game ended (the other reasons it would be disabled)
         if tkinter.DISABLED == self["state"] and not self.__flagged:
             return
@@ -259,7 +267,7 @@ class Flaggable(tkinter.Button):
 
     def reveal(self):
         # disable self BEFORE calling a potentially recursive function that depends on tiles being disabled
-        # SUNKEN instead of FLAT because borders
+        # SUNKEN instead of FLAT because it leaves borders
         self.config(state=tkinter.DISABLED, bg=Flaggable.DISABLED_BACKGROUND, relief=tkinter.SUNKEN)
         self._reveal()
 
@@ -278,6 +286,7 @@ class Mine(Flaggable):
 
     def _reveal(self):
         if self.master.first_move:
+            self.master.timer.start()
             location = (self.grid_info()['column'], self.grid_info()['row'])
             self.master.make_safe(location)
             self.master.clear_first_move()
@@ -298,6 +307,7 @@ class Safe(Flaggable):
         self.master.safe_tiles_left += 1
 
     def _reveal(self):
+        self.master.timer.start()
         self.master.safe_tiles_left -= 1
         self.master.clear_first_move()
 
