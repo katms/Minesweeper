@@ -45,6 +45,13 @@ class Minesweeper(tkinter.Frame):
 
         self.set_dimensions(columns, rows, mines)
 
+        # create menu
+        self.menu = tkinter.Menu(master, tearoff=False)
+        self.menu.add_command(label="New Game", command=self.new_game)
+        self.menu.add_command(label="Restart", command=self.reset_board)
+        self.menu.add_separator()
+        self.menu.add_command(label="Exit", command=self.quit)
+
         self.grid()
 
     def reset_board(self):
@@ -336,13 +343,7 @@ if __name__ == "__main__":
     minesweeper = Minesweeper(root, 10, 10, 10)
 
     top = tkinter.Menu(root)
-    game_menu = tkinter.Menu(top, tearoff=False)
-    game_menu.add_command(label="New Game", command=minesweeper.new_game)
-    game_menu.add_command(label="Restart", command=minesweeper.reset_board)
-    game_menu.add_separator()
-    game_menu.add_command(label="Exit", command=root.quit)
-
-    top.add_cascade(label="Game", menu=game_menu)
+    top.add_cascade(label="Game", menu=minesweeper.menu)
     root.config(menu=top)
 
     root.mainloop()

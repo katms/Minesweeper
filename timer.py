@@ -2,8 +2,8 @@ import tkinter
 import time
 
 class Timer(tkinter.Label):
-    def __init__(self, master, label=""):
-        super().__init__(master)
+    def __init__(self, master, label="", **options):
+        super().__init__(master, **options)
         self.seconds = tkinter.IntVar()
 
         def update(*args):
