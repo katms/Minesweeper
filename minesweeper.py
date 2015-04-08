@@ -9,7 +9,13 @@ class Minesweeper(tkinter.Frame):
     ROWS = range(8, 21)
     MIN_MINES = 10
 
-    TIMER_WIDTH = 2
+    TIMER_WIDTH = 3
+    COUNT_WIDTH = 4
+
+    # difficulties
+    EASY = (10,10,10)
+    MEDIUM = (16,16,40)
+    HARD = (30,15,90)
 
     @staticmethod
     def max_mines(columns, rows):
@@ -28,6 +34,8 @@ class Minesweeper(tkinter.Frame):
         # [(x,y)] = Tile at (x, y)
         self.tiles = dict()
 
+        # for recursively uncovering many tiles at once
+        # not really a queue
         self.__queue = set()
 
         self.__columns = 0
@@ -41,16 +49,20 @@ class Minesweeper(tkinter.Frame):
                               lambda *args: self.count.config(text="Mines left: {}".format(self.mines_left.get())))
         self.mines_left.set(self.__mines)
 
-        self.timer = timer.Timer(self, "Time: ")
-
-        self.set_dimensions(columns, rows, mines)
+        self.timer = timer.Timer(self, lambda n: "Time: {}".format(int(n)))
 
         # create menu
         self.menu = tkinter.Menu(master, tearoff=False)
         self.menu.add_command(label="New Game", command=self.new_game)
         self.menu.add_command(label="Restart", command=self.reset_board)
         self.menu.add_separator()
+        self.menu.add_command(label="Easy", command=lambda: self.set_dimensions(*Minesweeper.EASY))
+        self.menu.add_command(label="Medium", command=lambda: self.set_dimensions(*Minesweeper.MEDIUM))
+        self.menu.add_command(label="Hard", command=lambda: self.set_dimensions(*Minesweeper.HARD))
+        self.menu.add_separator()
         self.menu.add_command(label="Exit", command=self.quit)
+
+        self.menu.invoke(3) # easy
 
         self.grid()
 
@@ -99,8 +111,8 @@ class Minesweeper(tkinter.Frame):
 
         if rows in Minesweeper.ROWS:
             self.__rows = rows
-            self.count.grid(row=rows, columnspan=4)
-            self.timer.grid(row=rows, columnspan=4)
+            self.count.grid(row=rows, columnspan=Minesweeper.COUNT_WIDTH)
+            self.timer.grid(row=rows)
         else:
             raise ValueError("Cannot set rows as "+str(rows))
 
@@ -219,13 +231,15 @@ class Minesweeper(tkinter.Frame):
         self.play_again_or_quit("Game over", "You lose! ")
 
     def endgame(self):
+        # if multiple tiles are cleared in the last move all of them call endgame()
         if self.__game_over or self.safe_tiles_left > 0:
             return
 
         self.set_game_over()
+
         # disable unflagged mines:
         # all Safe tiles are revealed and therefore can't be flagged
-        for m in filter((lambda t: type(t) == Mine and not t.flagged), self.tiles.values()):
+        for m in filter(lambda t: type(t) == Mine and not t.flagged, self.tiles.values()):
             m.mark()
 
         self.play_again_or_quit("Congratulations", "You win! ")
@@ -260,12 +274,12 @@ class Flaggable(tkinter.Button):
         self.master.timer.start()
 
         # ignore if the tile was revealed or the game ended (the other reasons it would be disabled)
-        if tkinter.DISABLED == self["state"] and not self.__flagged:
+        if tkinter.DISABLED == self["state"] and not self.flagged:
             return
 
-        self.__flagged = not self.__flagged
+        self.__flagged = not self.flagged
 
-        if self.__flagged:
+        if self.flagged:
             self.config(text='F', disabledforeground=Flaggable.FLAG_COLOR, state=tkinter.DISABLED)
             self.master.mines_left.set(self.master.mines_left.get()-1)
         else:
@@ -279,7 +293,7 @@ class Flaggable(tkinter.Button):
         self._reveal()
 
     def reset(self):
-        if self.__flagged:
+        if self.flagged:
             self.flag()
         self.config(text="", state=tkinter.NORMAL, bg=Flaggable.ACTIVE_BACKGROUND, relief=tkinter.RAISED,
                     disabledforeground=Flaggable.DEFAULT_DISABLED_FOREGROUND)
@@ -307,7 +321,7 @@ class Mine(Flaggable):
 
 
 class Safe(Flaggable):
-    COLORS = (None, "#0004FF", "#0F9111", "#000000", "#5b076b", "#D6C600", "#100076", "#6467CC", "#017615")
+    COLORS = (None, "#0004FF", "#0F9111", "#000000", "#5b076b", "#999349", "#100076", "#6467CC", "#017615")
 
     def __init__(self, master):
         super().__init__(master)

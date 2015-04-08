@@ -2,12 +2,12 @@ import tkinter
 import time
 
 class Timer(tkinter.Label):
-    def __init__(self, master, label="", **options):
+    def __init__(self, master, format=lambda n: str(int(n)), **options):
         super().__init__(master, **options)
         self.seconds = tkinter.DoubleVar()
 
         def update(*args):
-            self["text"] = label+str(self.seconds.get())
+            self["text"] = format(self.seconds.get())
 
         self.seconds.trace('w', update)
         self.seconds.set(0)
@@ -56,7 +56,15 @@ class Timer(tkinter.Label):
 
 if __name__ == '__main__':
     root = tkinter.Tk()
-    timer = Timer(root, "Seconds passed: ")
+
+    def minutes_seconds(seconds):
+        minutes = int(seconds/60)
+        sec = int(seconds%60)
+        if sec < 10:
+            sec = '0'+str(sec)
+        return "Elapsed - {}:{}".format(minutes, sec)
+
+    timer = Timer(root, minutes_seconds)
     timer.grid()
 
 
