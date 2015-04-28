@@ -2,14 +2,24 @@ import tkinter
 import time
 
 class Timer(tkinter.Label):
-    def __init__(self, master, format=lambda n: str(int(n)), **options):
+    def __init__(self, master, format=lambda n: str(int(n)), limit=None, **options):
         super().__init__(master, **options)
         self.seconds = tkinter.DoubleVar()
 
         def update(*args):
             self["text"] = format(self.seconds.get())
 
+
         self.seconds.trace('w', update)
+
+        if limit is not None:
+            def limiter(*args):
+                if self.seconds.get() >= limit:
+                    self.seconds.set(limit)
+                    self.stop()
+
+            self.seconds.trace('w', limiter)
+
         self.seconds.set(0)
 
         self._startpoint = 0
@@ -48,7 +58,9 @@ class Timer(tkinter.Label):
 
     def _run(self):
         self.seconds.set(self._calculate_time())
-        self._cancel = self.after(100, self._run)
+        if self.running:
+            # traces on seconds (such as limit) can change this
+            self._cancel = self.after(100, self._run)
 
     def _calculate_time(self):
         return time.time() - self._startpoint + self._offset
