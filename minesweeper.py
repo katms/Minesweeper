@@ -51,6 +51,8 @@ class Minesweeper(tkinter.Frame):
 
         self.timer = timer.Timer(self, lambda n: "Time: {}".format(int(n)))
 
+        self.custom  = Custom(self)
+
         # create menu
         self.menu = tkinter.Menu(master, tearoff=False)
         self.menu.add_command(label="New Game", command=self.new_game)
@@ -59,6 +61,7 @@ class Minesweeper(tkinter.Frame):
         self.menu.add_command(label="Easy", command=lambda: self.set_dimensions(*Minesweeper.EASY))
         self.menu.add_command(label="Medium", command=lambda: self.set_dimensions(*Minesweeper.MEDIUM))
         self.menu.add_command(label="Hard", command=lambda: self.set_dimensions(*Minesweeper.HARD))
+        self.menu.add_command(label="Custom", command=lambda: self.custom.grid())
         self.menu.add_separator()
         self.menu.add_command(label="Exit", command=self.quit)
 
@@ -348,6 +351,19 @@ class Safe(Flaggable):
     def reset(self):
         self.master.safe_tiles_left += 1
         super().reset()
+
+
+class Custom(tkinter.Frame):
+    def __init__(self, game, **options):
+        super().__init__(game.master, **options)
+        self.game = game
+
+    def grid(self, **options):
+        self['height'] = self.game.winfo_reqheight()
+        self['width'] = self.game.winfo_reqwidth()
+
+        self.game.grid_remove()
+        super().grid(**options)
 
 
 if __name__ == "__main__":
