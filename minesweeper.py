@@ -15,7 +15,7 @@ class Minesweeper(tkinter.Frame):
     # difficulties
     EASY = (10,10,10)
     MEDIUM = (16,16,40)
-    HARD = (30,15,90)
+    HARD = (30,15,80)
 
     @staticmethod
     def max_mines(columns, rows):
@@ -104,26 +104,32 @@ class Minesweeper(tkinter.Frame):
         self.timer.stop()
         self.timer.reset()
 
+        if self.custom.grid_info():  # if self.custom is visible
+            self.custom.grid_remove()
+            self.grid()
+
     def set_dimensions(self, columns, rows, mines):
         if columns in Minesweeper.COLUMNS:
             self.__columns = columns
             # keep timer on the right
             self.timer.grid(column=columns-Minesweeper.TIMER_WIDTH, columnspan=Minesweeper.TIMER_WIDTH)
         else:
-            raise ValueError("Cannot set columns as "+str(columns))
+            raise DimensionError("Cannot set columns as "+str(columns))
 
         if rows in Minesweeper.ROWS:
             self.__rows = rows
             self.count.grid(row=rows, columnspan=Minesweeper.COUNT_WIDTH)
             self.timer.grid(row=rows)
         else:
-            raise ValueError("Cannot set rows as "+str(rows))
+            raise DimensionError("Cannot set rows as "+str(rows))
 
         if mines < Minesweeper.MIN_MINES:
-            raise ValueError("Not enough mines.")
-        elif Minesweeper.max_mines(self.columns, self.rows) < mines:
-            raise ValueError("Too many mines for this board size.")
+            raise DimensionError("Not enough mines.")
         else:
+            max_mines = Minesweeper.max_mines(self.columns, self.rows)
+            if max_mines < mines:
+                raise MineOverflow(max_mines)
+
             self.__mines = mines
             self.mines_left.set(self.mines)
 
@@ -359,10 +365,15 @@ class Custom(tkinter.Frame):
         super().__init__(game.master, **options)
         self.game = game
 
+        # separator
+        tkinter.Frame(self, bd=1, height=120, width=2, relief=tkinter.SUNKEN)\
+            .grid(column=2, rowspan=3, padx=7, pady=7)
 
         # Entries
         ENTRY_COLUMN = 3
         ENTRY_WIDTH = 5
+
+        # row counter
         row = 0
 
         class SetDim(tkinter.Entry):
@@ -370,17 +381,22 @@ class Custom(tkinter.Frame):
                 nonlocal row
 
                 def valid(new_string):
-                    return new_string is "" or (new_string.isdigit() and int(new_string) <= max)
+                    return new_string is "" or new_string.isdigit()
 
                 tkinter.Label(master, text="{}:\n({}-{})".format(dim_name, min, max)).grid(row=row)
 
-                super().__init__(master, width=ENTRY_WIDTH)
-                self.config(validate='key', vcmd=(self.register(valid), '%P'))
+                super().__init__(master, width=ENTRY_WIDTH,
+                                 validate='key', vcmd=(master.register(valid), '%P'))
                 self.grid(row=row, column=ENTRY_COLUMN)
                 row += 1
 
             def get(self):
                 return int(super().get())
+
+            def insert(self, index, string):
+                # clear first
+                self.delete(0, tkinter.END)
+                super().insert(index, string)
 
         def minimum(r):
             # r is an ascending range
@@ -411,13 +427,16 @@ class Custom(tkinter.Frame):
             try:
                 game.set_dimensions(self.columns.get(), self.rows.get(), self.mines.get())
             except ValueError:
-                # clarify if mines <= 720 and > max_mines(columns, rows)
-                max_mines = Minesweeper.max_mines(self.columns.get(), self.rows.get())
-                if self.mines.get() > max_mines:
-                    self.mines.delete(0, tkinter.END)
-                    self.mines.insert(0, str(max_mines))
-                # do nothing (else)
-                return
+                # one of the entries is blank
+                tkinter.messagebox.showerror(message="You must fill in all entries.")
+
+            except MineOverflow as mo:
+                self.mines.insert(0, str(mo.maximum))
+                tkinter.messagebox.showwarning(message=mo.message)
+
+            except DimensionError as de:
+                # columns or rows
+                tkinter.messagebox.showwarning(message=de.message)
             else:
                 self.grid_remove()
                 game.grid()
@@ -431,7 +450,17 @@ class Custom(tkinter.Frame):
         self.rows.insert(0, str(self.game.rows))
         self.mines.insert(0, str(self.game.mines))
 
+class MinesweeperException(Exception):
+    pass
 
+class DimensionError(MinesweeperException):
+    def __init__(self, message):
+        self.message = message
+
+class MineOverflow(DimensionError):
+    def __init__(self, mines):
+        super().__init__("You can only have up to {} mines for this board size!".format(mines))
+        self.maximum = mines
 
 if __name__ == "__main__":
     root = tkinter.Tk()
