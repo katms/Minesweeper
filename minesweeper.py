@@ -21,7 +21,7 @@ class Minesweeper(tkinter.Frame):
     def max_mines(columns, rows):
         return int(columns * rows * 0.9)
 
-    def __init__(self, master, columns, rows, mines):
+    def __init__(self, master):
         super().__init__(master)
 
         # these are flipped once and then never again for rest of the game
@@ -354,14 +354,49 @@ class Safe(Flaggable):
 
 
 class Custom(tkinter.Frame):
+    """Manually sets dimensions for minesweeper"""
     def __init__(self, game, **options):
         super().__init__(game.master, **options)
         self.game = game
 
-    def grid(self, **options):
-        self['height'] = self.game.winfo_reqheight()
-        self['width'] = self.game.winfo_reqwidth()
+        # Entries
+        ENTRY_COLUMN = 3
+        ENTRY_WIDTH = 5
+        row = 0
 
+        class SetDim():
+            def __init__(self, master, dim_name, min, max):
+                nonlocal row
+                label = tkinter.Label(master, text="{}:\n({}-{})".format(dim_name, min, max))
+                label.grid(row=row)
+                entry = tkinter.Entry(master, width=ENTRY_WIDTH)
+                entry.grid(row=row, column=ENTRY_COLUMN)
+                row += 1
+
+        def minimum(r):
+            # r is an ascending range
+            return r.start
+
+        def maximum(r):
+            # inclusive
+            return r.stop-r.step
+
+        MIN_COL, MAX_COL = minimum(Minesweeper.COLUMNS), maximum(Minesweeper.COLUMNS)
+        MIN_ROWS, MAX_ROWS = minimum(Minesweeper.ROWS), maximum(Minesweeper.ROWS)
+        MIN_MINES, MAX_MINES = Minesweeper.MIN_MINES, Minesweeper.max_mines(MAX_COL, MAX_ROWS)
+
+
+        self.columns = SetDim(self, "Columns", MIN_COL, MAX_COL)
+        self.rows = SetDim(self, "Rows", MIN_ROWS, MAX_ROWS)
+        self.mines = SetDim(self, "Mines", MIN_MINES, MAX_MINES)
+
+        # Cancel button
+        def cancel():
+            self.grid_remove()
+            game.grid()
+        tkinter.Button(self, text="Cancel", command=cancel).grid(row=4)
+
+    def grid(self, **options):
         self.game.grid_remove()
         super().grid(**options)
 
@@ -370,7 +405,7 @@ if __name__ == "__main__":
     root = tkinter.Tk()
     root.title("Minesweeper")
     root.resizable(False, False)
-    minesweeper = Minesweeper(root, 10, 10, 10)
+    minesweeper = Minesweeper(root)
 
     top = tkinter.Menu(root)
     top.add_cascade(label="Game", menu=minesweeper.menu)
