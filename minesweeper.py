@@ -368,11 +368,19 @@ class Custom(tkinter.Frame):
         class SetDim(tkinter.Entry):
             def __init__(self, master, dim_name, min, max):
                 nonlocal row
-                label = tkinter.Label(master, text="{}:\n({}-{})".format(dim_name, min, max))
-                label.grid(row=row)
+
+                def valid(new_string):
+                    return new_string is "" or (new_string.isdigit() and int(new_string) <= max)
+
+                tkinter.Label(master, text="{}:\n({}-{})".format(dim_name, min, max)).grid(row=row)
+
                 super().__init__(master, width=ENTRY_WIDTH)
+                self.config(validate='key', vcmd=(self.register(valid), '%P'))
                 self.grid(row=row, column=ENTRY_COLUMN)
                 row += 1
+
+            def get(self):
+                return int(super().get())
 
         def minimum(r):
             # r is an ascending range
@@ -401,9 +409,14 @@ class Custom(tkinter.Frame):
         # OK
         def ok():
             try:
-                game.set_dimensions(int(self.columns.get()), int(self.rows.get()), int(self.mines.get()))
+                game.set_dimensions(self.columns.get(), self.rows.get(), self.mines.get())
             except ValueError:
-                # do nothing
+                # clarify if mines <= 720 and > max_mines(columns, rows)
+                max_mines = Minesweeper.max_mines(self.columns.get(), self.rows.get())
+                if self.mines.get() > max_mines:
+                    self.mines.delete(0, tkinter.END)
+                    self.mines.insert(0, str(max_mines))
+                # do nothing (else)
                 return
             else:
                 self.grid_remove()
