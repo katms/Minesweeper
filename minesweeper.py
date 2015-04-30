@@ -359,18 +359,19 @@ class Custom(tkinter.Frame):
         super().__init__(game.master, **options)
         self.game = game
 
+
         # Entries
         ENTRY_COLUMN = 3
         ENTRY_WIDTH = 5
         row = 0
 
-        class SetDim():
+        class SetDim(tkinter.Entry):
             def __init__(self, master, dim_name, min, max):
                 nonlocal row
                 label = tkinter.Label(master, text="{}:\n({}-{})".format(dim_name, min, max))
                 label.grid(row=row)
-                entry = tkinter.Entry(master, width=ENTRY_WIDTH)
-                entry.grid(row=row, column=ENTRY_COLUMN)
+                super().__init__(master, width=ENTRY_WIDTH)
+                self.grid(row=row, column=ENTRY_COLUMN)
                 row += 1
 
         def minimum(r):
@@ -394,11 +395,29 @@ class Custom(tkinter.Frame):
         def cancel():
             self.grid_remove()
             game.grid()
-        tkinter.Button(self, text="Cancel", command=cancel).grid(row=4)
+        tkinter.Button(self, text="Cancel", command=cancel).grid(row=row, column=ENTRY_COLUMN)
+
+
+        # OK
+        def ok():
+            try:
+                game.set_dimensions(int(self.columns.get()), int(self.rows.get()), int(self.mines.get()))
+            except ValueError:
+                # do nothing
+                return
+            else:
+                self.grid_remove()
+                game.grid()
+
+        tkinter.Button(self, text="OK", command=ok).grid(row=row)
 
     def grid(self, **options):
         self.game.grid_remove()
         super().grid(**options)
+        self.columns.insert(0,str(self.game.columns))
+        self.rows.insert(0, str(self.game.rows))
+        self.mines.insert(0, str(self.game.mines))
+
 
 
 if __name__ == "__main__":
